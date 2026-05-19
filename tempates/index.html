@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Imperial Steam Finder</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&display=swap" rel="stylesheet">
+
+<style>
+
+body {
+    margin: 0;
+    font-family: Cinzel, serif;
+    background: #0a0a0a;
+    color: #d4af37;
+}
+
+/* HEADER */
+header {
+    text-align: center;
+    padding: 25px 10px;
+}
+
+h1 {
+    font-size: 34px;
+    text-shadow: 0 0 12px #d4af37;
+}
+
+/* TOP BAR */
+.topbar {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 10px;
+}
+
+input {
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid #d4af37;
+    background: #111;
+    color: #d4af37;
+    width: 200px;
+}
+
+button {
+    padding: 10px 15px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    background: linear-gradient(45deg, #d4af37, #8c6a00);
+    color: black;
+    font-weight: bold;
+}
+
+/* FILTER PANEL */
+.panel {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+}
+
+/* LOADING */
+#loading {
+    display: none;
+    text-align: center;
+    animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+    0% {opacity:0.3}
+    50% {opacity:1}
+    100% {opacity:0.3}
+}
+
+/* INFO */
+#info {
+    text-align: center;
+    margin-top: 10px;
+}
+
+/* RESULTS */
+#results {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 12px;
+    padding: 20px;
+}
+
+/* CARD */
+.card {
+    background: #111;
+    border: 1px solid #d4af37;
+    border-radius: 10px;
+    padding: 12px;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from {opacity:0; transform:translateY(10px);}
+    to {opacity:1; transform:translateY(0);}
+}
+
+a {
+    color: #ffd700;
+}
+
+/* MOBILE */
+@media (max-width: 600px) {
+    .topbar {
+        flex-direction: column;
+        align-items: center;
+    }
+    input {
+        width: 90%;
+    }
+}
+
+</style>
+</head>
+
+<body>
+
+<header>
+
+<h1>⚜ IMPERIAL STEAM FINDER ⚜</h1>
+
+<div class="topbar">
+
+    <input id="q" placeholder="Игра...">
+
+    <button onclick="toggle()">⚙ FILTERS</button>
+    <button onclick="randomSearch()">RANDOM</button>
+    <button onclick="search()">SEARCH</button>
+
+</div>
+
+<div id="panel" class="panel">
+
+    <label>
+        <input type="checkbox" id="usePrice">
+        Фильтр цены
+    </label>
+
+    <input id="price" placeholder="Макс цена" disabled>
+
+    <label>
+        <input type="checkbox" id="useTag">
+        Фильтр тегов
+    </label>
+
+    <input id="tag" placeholder="Тег" disabled>
+
+</div>
+
+<div id="loading">⚜ LOADING...</div>
+
+<div id="info"></div>
+
+</header>
+
+<div id="results"></div>
+
+<div style="text-align:center; padding:20px;">
+    <button id="moreBtn" onclick="loadMore()" style="display:none;">
+        ЗАГРУЗИТЬ ЕЩЁ
+    </button>
+</div>
+
+<script>
+
+let page = 1;
+let currentQuery = "";
+
+function toggle() {
+    let p = document.getElementById("panel");
+    p.style.display = (p.style.display === "flex") ? "none" : "flex";
+}
+
+document.getElementById("usePrice").onchange = e =>
+    document.getElementById("price").disabled = !e.target.checked;
+
+document.getElementById("useTag").onchange = e =>
+    document.getElementById("tag").disabled = !e.target.checked;
+
+async function search() {
+
+    page = 1;
+    currentQuery = document.getElementById("q").value;
+
+    let usePrice = document.getElementById("usePrice").checked;
+    let price = document.getElementById("price").value;
+
+    let useTag = document.getElementById("useTag").checked;
+    let tag = document.getElementById("tag").value;
+
+    let url = `/search?q=${currentQuery}&page=${page}`;
+
+    if (usePrice && price) url += `&max_price=${price}`;
+    if (useTag && tag) url += `&tag=${tag}`;
+
+    let loading = document.getElementById("loading");
+    let out = document.getElementById("results");
+    let info = document.getElementById("info");
+    let moreBtn = document.getElementById("moreBtn");
+
+    out.innerHTML = "";
+    loading.style.display = "block";
+    moreBtn.style.display = "none";
+
+    let res = await fetch(url);
+    let data = await res.json();
+
+    loading.style.display = "none";
+
+    info.innerHTML = `⚜ Найдено игр: ${data.count}`;
+
+    render(data.games);
+
+    if (data.games.length === 20) {
+        moreBtn.style.display = "block";
+    }
+}
+
+async function loadMore() {
+
+    page++;
+
+    let usePrice = document.getElementById("usePrice").checked;
+    let price = document.getElementById("price").value;
+
+    let useTag = document.getElementById("useTag").checked;
+    let tag = document.getElementById("tag").value;
+
+    let url = `/search?q=${currentQuery}&page=${page}`;
+
+    if (usePrice && price) url += `&max_price=${price}`;
+    if (useTag && tag) url += `&tag=${tag}`;
+
+    let res = await fetch(url);
+    let data = await res.json();
+
+    render(data.games);
+
+    let moreBtn = document.getElementById("moreBtn");
+
+    if (data.games.length < 20) {
+        moreBtn.style.display = "none";
+    } else {
+        moreBtn.style.display = "block";
+    }
+}
+  
+  async function randomSearch() {
+
+    page = 1;
+
+    let usePrice = document.getElementById("usePrice").checked;
+    let price = document.getElementById("price").value;
+
+    let useTag = document.getElementById("useTag").checked;
+    let tag = document.getElementById("tag").value;
+
+    let url = `/random`;
+
+    if (usePrice && price) url += `?max_price=${price}`;
+    if (useTag && tag) {
+        url += (url.includes("?") ? "&" : "?") + `tag=${tag}`;
+    }
+
+    let loading = document.getElementById("loading");
+    let out = document.getElementById("results");
+    let info = document.getElementById("info");
+    let moreBtn = document.getElementById("moreBtn");
+
+    out.innerHTML = "";
+    loading.style.display = "block";
+    moreBtn.style.display = "none";
+
+    let res = await fetch(url);
+    let data = await res.json();
+
+    loading.style.display = "none";
+
+    info.innerHTML = `RANDOM: найдено ${data.count}`;
+
+    render(data.games);
+}
+
+function render(games) {
+
+    let out = document.getElementById("results");
+
+    games.forEach(g => {
+        out.innerHTML += `
+        <div class="card">
+            <h3>${g.title}</h3>
+            <p>💰 ${g.price}</p>
+            <p>🔥 ${g.discount}</p>
+            <p>🏷 ${g.tags}</p>
+            <a href="${g.link}" target="_blank">OPEN</a>
+        </div>
+        `;
+    });
+}
+
+</script>
+
+</body>
+  </html>
